@@ -1,7 +1,7 @@
 obj-m := cdata.o
 
 #KDIR := /home/android/android-kernel/common
-KDIR := /usr/src/linux-headers-2.6.24-26-generic
+KDIR := /usr/src/linux-headers-2.6.32-38-generic
 PWD := $(shell pwd)
 
 default:

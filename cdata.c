@@ -24,7 +24,7 @@ struct cdata_t {
 	wait_queue_head_t wait;
 };
 
-
+static DECLARE_MUTEX(cdata_sem);
 static int cdata_open(struct inode *inode, struct file *filp)
 {
 	int minor;
@@ -76,7 +76,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
 	DECLARE_WAITQUEUE(wait, current);
 	int i;
-	//mutex lock
+	down(&cdata_sem);
 	for( i=0; i < count; i++){
 		if( cdata->index >= BUFSIZE){
 			add_wait_queue(&cdata->wait, &wait);
@@ -92,6 +92,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			return -EFAULT;
 	}
 	// mutex unlock
+	up(&cdata_sem);
 	return 0;
 }
 
