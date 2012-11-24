@@ -24,7 +24,9 @@ struct cdata_t {
 	wait_queue_head_t wait;
 };
 
-static DECLARE_MUTEX(cdata_sem);
+static DECLARE_MUTEX(cdata_sem); // Think why here use global variable
+				 // Don't use private variable
+
 static int cdata_open(struct inode *inode, struct file *filp)
 {
 	int minor;
@@ -48,12 +50,12 @@ static int cdata_ioctl(struct inode *inode, struct file *filp,
 
 	switch(cmd)
 	{
-		case IOCTL_EMPTY:
+		case CDATA_EMPTY:
 			printk(KERN_ALERT "in ioctl: IOCTL_EMPTY");
 			cdata->data[0] = '\0';
 			cdata->index = 0;
 			break;
-		case IOCTL_SYNC:
+		case CDATA_SYNC:
 			printk(KERN_ALERT "Stream = %s",cdata->data);
 			break;
 		default:
