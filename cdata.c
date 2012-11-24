@@ -81,6 +81,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	down(&cdata_sem);
 	for( i=0; i < count; i++){
 		if( cdata->index >= BUFSIZE){
+			up(&cdata_sem);
 			add_wait_queue(&cdata->wait, &wait);
 			set_current_state(TASK_INTERRUPTIBLE);
 			//current->state = TASK_UNINTERRUPTIBLE;
@@ -88,6 +89,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			//current->state = TASK_RUNNING; -> it is Error;
 			current->state = TASK_RUNNING;
 			remove_wait_queue(&cdata->wait, &wait);
+			down(&cdata_sem);
 		}
 
 		if( copy_from_user(&cdata->data[cdata->index++], &buf[i], 1) )
