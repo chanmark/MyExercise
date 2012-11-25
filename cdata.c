@@ -15,11 +15,12 @@
 #endif
 
 #define	CDATA_MAJOR 121 
-#define     BUFSIZE	1024
+#define BUFSIZE	1024
 
 #define LCD_WIDTH (240)
 #define LCD_HEIGHT (320)
 #define LCD_BPP (4)
+#define LCD_SIZE (LCD_WIDTH*LCD_HEIGHT*LCD_BPP)
 
 struct cdata_t {
 	char data[BUFSIZE];
@@ -41,6 +42,7 @@ static void flush_lcd(unsigned long priv)
 	int offset = cdata->offset;
 	int i;
 
+	fb += offset;
 	for( i=0;i<index;i++){
 		writeb(cdata->data[i], fb++);
 		offset++;
@@ -114,7 +116,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 		if( cdata->index >= BUFSIZE){
 					
 			add_wait_queue(&cdata->wait, &wait);
-			set_current_state(TASK_INTERRUPTIBLE);
+			set_current_state(TASK_INTERRUPTIBLE); //TASK_UNINTERRUPTIBLE
 			cdata->timer.expires = jiffies + 500;
 			cdata->timer.data = (void *)cdata;
 			cdata->timer.function = flush_lcd;
