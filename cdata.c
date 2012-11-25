@@ -133,6 +133,18 @@ static int cdata_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+static int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
+{	
+	unsigned long start = vma->vm_start;
+	unsigned long end = vma->vm_end;
+	unsigned long size;
+
+	size = end - start;
+	remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
+	
+	return 0;
+}
+
 struct file_operations cdata_fops = {	
 	owner:		THIS_MODULE,
 	open:		cdata_open,
@@ -140,6 +152,7 @@ struct file_operations cdata_fops = {
 	ioctl:		cdata_ioctl,
 	read:		cdata_read,
 	write:		cdata_write,
+	mmap:		cdata_mmap,
 };
 
 int my_init_module(void)
