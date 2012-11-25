@@ -24,6 +24,7 @@
 struct cdata_t {
 	char data[BUFSIZE];
 	int  index;
+	int  offset;
 	char *iomem;
 	struct timer_list timer;
 	wait_queue_head_t wait;
@@ -37,12 +38,18 @@ static void flush_lcd(unsigned long priv)
 	struct cdata_t *cdata = (struct cdata_t *)priv;
 	char *fb = cdata->iomem;
 	int index = cdata->index;
+	int offset = cdata->offset;
 	int i;
 
 	for( i=0;i<index;i++){
 		writeb(cdata->data[i], fb++);
+		offset++;
+		
+		if(offset >= LCD_SIZE)
+			offset = 0;
 	}
 	cdata->index = 0;
+	cdata->offset = offset;
 
 	//Wake up process
 	// current->state = TASK_RUNNING;
