@@ -45,7 +45,8 @@ static void flush_lcd(unsigned long priv)
 	cdata->index = 0;
 
 	//Wake up process
-	current->state = TASK_RUNNING;
+	// current->state = TASK_RUNNING;
+	wake_up(&cdata->wait);
 }
 
 static int cdata_open(struct inode *inode, struct file *filp)
