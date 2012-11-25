@@ -17,15 +17,36 @@
 #define	CDATA_MAJOR 121 
 #define     BUFSIZE	1024
 
+#define LCD_WIDTH (240)
+#define LCD_HEIGHT (320)
+#define LCD_BPP (4)
+
 struct cdata_t {
 	char data[BUFSIZE];
 	int  index;
-
+	char *iomem;
+	struct timer_list timer;
 	wait_queue_head_t wait;
 };
 
 static DECLARE_MUTEX(cdata_sem); // Think why here use global variable
 				 // Don't use private variable
+
+static void flush_lcd(unsigned long priv)
+{
+	struct cdata_t *cdata = (struct cdata_t *)priv;
+	char *fb = cdata->iomem;
+	int index = cdata->index;
+	int i;
+
+	for( i=0;i<index;i++){
+		writeb(cdata->data[i], fb++);
+	}
+	cdata->index = 0;
+
+	//Wake up process
+	current->state = TASK_RUNNING;
+}
 
 static int cdata_open(struct inode *inode, struct file *filp)
 {
@@ -39,6 +60,8 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t),GFP_KERNEL);
 	init_waitqueue_head(&cdata->wait);
 	filp->private_data = (void *)cdata; 
+	cdata->iomem =  ioremap(0x33f00000, LCD_WIDTH*LCD_HEIGHT*LCD_BPP);
+	init_timer(&cdata->timer);
 
 	return 0;
 }
@@ -84,11 +107,13 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 					
 			add_wait_queue(&cdata->wait, &wait);
 			set_current_state(TASK_INTERRUPTIBLE);
-			//current->state = TASK_UNINTERRUPTIBLE;
+			cdata->timer.expires = jiffies + 500;
+			cdata->timer.data = (void *)cdata;
+			cdata->timer.function = flush_lcd;
+			add_timer(&cdata->timer);
 			up(&cdata_sem);			
 			schedule();
 			down(&cdata_sem);
-			//current->state = TASK_RUNNING; -> it is Error;
 			current->state = TASK_RUNNING;
 			remove_wait_queue(&cdata->wait, &wait);
 		}
@@ -119,8 +144,12 @@ struct file_operations cdata_fops = {
 
 int my_init_module(void)
 {
-	register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops);
-	printk(KERN_ALERT "cdata module: registered.\n");
+	int i;
+	char *fb;
+
+	if(register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops)){
+		printk(KERN_ALERT "cdata module: registered.\n");
+	}
 
 	return 0;
 }
