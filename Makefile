@@ -1,4 +1,4 @@
-obj-m := cdata.o
+obj-m := cdata.o probe_pci.o
 
 #KDIR := /home/android/android-kernel/common
 KDIR := /usr/src/linux-headers-2.6.32-38-generic

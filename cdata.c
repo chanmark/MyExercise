@@ -14,7 +14,7 @@
 #define __SMP__
 #endif
 
-#define	CDATA_MAJOR 121 
+#define	CDATA_MAJOR 124
 #define BUFSIZE	1024
 
 #define LCD_WIDTH (240)
@@ -46,7 +46,7 @@ static void flush_lcd(unsigned long priv)
 	for( i=0;i<index;i++){
 		writeb(cdata->data[i], fb++);
 		offset++;
-		schedule();     // if hardward is too slow, we need scheduling.???
+		//schedule();     // if hardward is too slow, we need scheduling.???
 		if(offset >= LCD_SIZE)
 			offset = 0;
 	}
@@ -54,7 +54,7 @@ static void flush_lcd(unsigned long priv)
 	cdata->offset = offset;
 
 	//Wake up process
-	// current->state = TASK_RUNNING;
+	//current->state = TASK_RUNNING;
 	wake_up(&cdata->wait);
 }
 
@@ -64,14 +64,15 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	struct cdata_t *cdata;
 	minor = MINOR(inode->i_rdev);
 	printk(KERN_ALERT "filp Address = %p\n", filp);
-	
+
 	cdata->index = 0;
-	
+
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t),GFP_KERNEL);
-	init_waitqueue_head(&cdata->wait);
-	filp->private_data = (void *)cdata; 
-	cdata->iomem =  ioremap(0x33f00000, LCD_WIDTH*LCD_HEIGHT*LCD_BPP);
+	init_waitqueue_head(&cdata->wait); 
+	cdata->iomem =  ioremap(0x33f00000, LCD_SIZE);
 	init_timer(&cdata->timer);
+
+	filp->private_data = (void *)cdata;
 
 	return 0;
 }
@@ -94,7 +95,7 @@ static int cdata_ioctl(struct inode *inode, struct file *filp,
 		default:
 			return EINVAL;
 	}
-			
+
 	printk(KERN_ALERT "cdata: in cdata_ioctl()\n");
 	return 0;
 }
@@ -114,8 +115,8 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	down(&cdata_sem);
 	for( i=0; i < count; i++){
 		if( cdata->index >= BUFSIZE){
-					
-			
+
+
 			cdata->timer.expires = jiffies + 500;
 			cdata->timer.data = (void *)cdata;
 			cdata->timer.function = flush_lcd;
@@ -123,7 +124,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			// perpare_to_wait 2013/1/8
 			add_wait_queue(&cdata->wait, &wait);
 			set_current_state(TASK_INTERRUPTIBLE); //TASK_UNINTERRUPTIBLE
-			
+
 			up(&cdata_sem);			
 			schedule();
 			down(&cdata_sem);
@@ -154,7 +155,7 @@ static int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	size = end - start;
 	remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
-	
+
 	return 0;
 }
 
@@ -167,22 +168,18 @@ struct file_operations cdata_fops = {
 	write:		cdata_write,
 	mmap:		cdata_mmap,
 };
-
-struct miscdevice cdata_fops = {
+/*
+struct miscdevice cdata_misc = {
 	minor:	12,
 	name:	"cdata",
 	fops:	&cdata_fops,
-};
+};*/
 
 
 int my_init_module(void)
 {
-	if( misc_register(&cdata_fops)){
-		printk(KERN_ALERT "cdata: register failed\n");
-		return -1;
-	}
-
-	printk(KERN_ALERT "cdata driver: registering...\n");
+	register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops);
+	printk(KERN_ALERT "cdata module: registered.\n");
 
 	return 0;
 }
