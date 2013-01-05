@@ -46,7 +46,7 @@ static void flush_lcd(unsigned long priv)
 	for( i=0;i<index;i++){
 		writeb(cdata->data[i], fb++);
 		offset++;
-		
+		schedule();     // if hardward is too slow, we need scheduling.???
 		if(offset >= LCD_SIZE)
 			offset = 0;
 	}
