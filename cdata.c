@@ -108,19 +108,22 @@ static ssize_t cdata_read(struct file *filp, char *buf,
 static ssize_t cdata_write(struct file *filp, const char *buf, 
 				size_t count, loff_t *off)
 {
-	struct cdata_t *cdata = (struct cdata_t *)filp->private_data;
+	struct cdata_t *cdata = (struct cdata_t *)filp->private_data; // => container_of 2013/1/8
 	DECLARE_WAITQUEUE(wait, current);
 	int i;
 	down(&cdata_sem);
 	for( i=0; i < count; i++){
 		if( cdata->index >= BUFSIZE){
 					
-			add_wait_queue(&cdata->wait, &wait);
-			set_current_state(TASK_INTERRUPTIBLE); //TASK_UNINTERRUPTIBLE
+			
 			cdata->timer.expires = jiffies + 500;
 			cdata->timer.data = (void *)cdata;
 			cdata->timer.function = flush_lcd;
 			add_timer(&cdata->timer);
+			// perpare_to_wait 2013/1/8
+			add_wait_queue(&cdata->wait, &wait);
+			set_current_state(TASK_INTERRUPTIBLE); //TASK_UNINTERRUPTIBLE
+			
 			up(&cdata_sem);			
 			schedule();
 			down(&cdata_sem);
@@ -165,14 +168,21 @@ struct file_operations cdata_fops = {
 	mmap:		cdata_mmap,
 };
 
+struct miscdevice cdata_fops = {
+	minor:	12,
+	name:	"cdata",
+	fops:	&cdata_fops,
+};
+
+
 int my_init_module(void)
 {
-	int i;
-	char *fb;
-
-	if(register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops)){
-		printk(KERN_ALERT "cdata module: registered.\n");
+	if( misc_register(&cdata_fops)){
+		printk(KERN_ALERT "cdata: register failed\n");
+		return -1;
 	}
+
+	printk(KERN_ALERT "cdata driver: registering...\n");
 
 	return 0;
 }
