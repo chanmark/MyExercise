@@ -9,6 +9,7 @@
 #include <linux/ioctl.h>
 #include "cdata_ioctl.h"
 #include <asm/uaccess.h>
+#include <linux/tqueue.h>
 
 #ifdef CONFIG_SMP
 #define __SMP__
@@ -27,7 +28,9 @@ struct cdata_t {
 	int  index;
 	int  offset;
 	char *iomem;
-	struct timer_list timer;
+	//struct timer_list timer;
+
+	struct tq_struct  tq;
 	wait_queue_head_t wait;
 };
 
@@ -70,8 +73,8 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t),GFP_KERNEL);
 	init_waitqueue_head(&cdata->wait); 
 	cdata->iomem =  ioremap(0x33f00000, LCD_SIZE);
-	init_timer(&cdata->timer);
-
+	//init_timer(&cdata->timer);
+	INIT_TQUEUE(&cdata->tq, flush_lcd, (void *)cdata);
 	filp->private_data = (void *)cdata;
 
 	return 0;
@@ -116,11 +119,12 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	for( i=0; i < count; i++){
 		if( cdata->index >= BUFSIZE){
 
-
+			/*
 			cdata->timer.expires = jiffies + 500;
 			cdata->timer.data = (void *)cdata;
 			cdata->timer.function = flush_lcd;
-			add_timer(&cdata->timer);
+			add_timer(&cdata->timer);*/
+			schedule_task(&cdata->tq); 
 			// perpare_to_wait 2013/1/8
 			add_wait_queue(&cdata->wait, &wait);
 			set_current_state(TASK_INTERRUPTIBLE); //TASK_UNINTERRUPTIBLE
