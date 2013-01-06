@@ -9,18 +9,18 @@
 #include <linux/ioctl.h>
 #include "cdata_ioctl.h"
 #include <asm/uaccess.h>
-#include <linux/tqueue.h>
+//#include <linux/tqueue.h>
 
 #ifdef CONFIG_SMP
 #define __SMP__
 #endif
 
-#define	CDATA_MAJOR 124
+#define	CDATA_MAJOR 121
 #define BUFSIZE	1024
 
-#define LCD_WIDTH (240)
-#define LCD_HEIGHT (320)
-#define LCD_BPP (4)
+#define LCD_WIDTH (1024)
+#define LCD_HEIGHT (768)
+#define LCD_BPP (1)
 #define LCD_SIZE (LCD_WIDTH*LCD_HEIGHT*LCD_BPP)
 
 struct cdata_t {
@@ -30,16 +30,17 @@ struct cdata_t {
 	char *iomem;
 	//struct timer_list timer;
 
-	struct tq_struct  tq;
+	//struct tq_struct  tq;
+	struct work_struct work;
 	wait_queue_head_t wait;
 };
 
 static DECLARE_MUTEX(cdata_sem); // Think why here use global variable
 				 // Don't use private variable
 
-static void flush_lcd(unsigned long priv)
+static void flush_lcd(struct work_struct *work)
 {
-	struct cdata_t *cdata = (struct cdata_t *)priv;
+	struct cdata_t *cdata = container_of(work, struct cdata_t, work);
 	char *fb = cdata->iomem;
 	int index = cdata->index;
 	int offset = cdata->offset;
@@ -47,7 +48,7 @@ static void flush_lcd(unsigned long priv)
 
 	fb += offset;
 	for( i=0;i<index;i++){
-		writeb(cdata->data[i], fb++);
+		writeb(cdata->data[i], fb+offset);
 		offset++;
 		//schedule();     // if hardward is too slow, we need scheduling.???
 		if(offset >= LCD_SIZE)
@@ -68,14 +69,14 @@ static int cdata_open(struct inode *inode, struct file *filp)
 	minor = MINOR(inode->i_rdev);
 	printk(KERN_ALERT "filp Address = %p\n", filp);
 
-	cdata->index = 0;
-
 	cdata = (struct cdata_t *)kmalloc(sizeof(struct cdata_t),GFP_KERNEL);
 	init_waitqueue_head(&cdata->wait); 
-	cdata->iomem =  ioremap(0x33f00000, LCD_SIZE);
+	cdata->iomem =  ioremap(0xe0000000, LCD_SIZE);
 	//init_timer(&cdata->timer);
-	INIT_TQUEUE(&cdata->tq, flush_lcd, (void *)cdata);
+	//INIT_TQUEUE(&cdata->tq, flush_lcd, (void *)cdata);
+        INIT_WORK(&cdata->work, flush_lcd);
 	filp->private_data = (void *)cdata;
+	cdata->index = 0;
 
 	return 0;
 }
@@ -124,7 +125,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			cdata->timer.data = (void *)cdata;
 			cdata->timer.function = flush_lcd;
 			add_timer(&cdata->timer);*/
-			schedule_task(&cdata->tq); 
+			schedule_work(&cdata->work); 
 			// perpare_to_wait 2013/1/8
 			add_wait_queue(&cdata->wait, &wait);
 			set_current_state(TASK_INTERRUPTIBLE); //TASK_UNINTERRUPTIBLE
@@ -158,7 +159,7 @@ static int cdata_mmap(struct file *filp, struct vm_area_struct *vma)
 	unsigned long size;
 
 	size = end - start;
-	remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
+	//remap_page_range(start, 0x33f00000, size, PAGE_SHARED);
 
 	return 0;
 }
