@@ -121,7 +121,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	//down(&cdata_sem2);
 	down(&cdata_sem);
 	for( i=0; i < count; i++){
-		if( cdata->index >= BUFSIZE){
+		if ( cdata->index >= BUFSIZE) {
 
 			/*
 			cdata->timer.expires = jiffies + 500;
