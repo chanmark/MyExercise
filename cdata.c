@@ -122,10 +122,14 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data; // => container_of 2013/1/8
 	DECLARE_WAITQUEUE(wait, current);
 	int i;
-	//down(&cdata_sem2);
+	int index;
+	
 	down(&cdata_sem);
+	index = cdata->index;
+	up();
+
 	for( i=0; i < count; i++){
-		if ( cdata->index >= BUFSIZE) {
+		if ( index >= BUFSIZE) {
 
 			/*
 			cdata->timer.expires = jiffies + 500;
@@ -148,8 +152,10 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			return -EFAULT;
 	}
 	// mutex unlock
-	//up(&cdata_sem2);
-	up(&cdata_sem);
+	
+	down(&cdata_sem);
+	cdata->index = index;
+	up();
 	return 0;
 }
 
