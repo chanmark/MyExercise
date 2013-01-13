@@ -47,6 +47,7 @@ static void flush_lcd(struct work_struct *work)
 	int i;
 
 	fb += offset;
+	//down();
 	for( i=0;i<index;i++){
 		writeb(cdata->data[i], fb+offset);
 		offset++;
@@ -60,6 +61,7 @@ static void flush_lcd(struct work_struct *work)
 	//Wake up process
 	//current->state = TASK_RUNNING;
 	wake_up(&cdata->wait);
+	//up();
 }
 
 static int cdata_open(struct inode *inode, struct file *filp)
@@ -116,6 +118,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 	struct cdata_t *cdata = (struct cdata_t *)filp->private_data; // => container_of 2013/1/8
 	DECLARE_WAITQUEUE(wait, current);
 	int i;
+	//down(&cdata_sem2);
 	down(&cdata_sem);
 	for( i=0; i < count; i++){
 		if( cdata->index >= BUFSIZE){
@@ -141,6 +144,7 @@ static ssize_t cdata_write(struct file *filp, const char *buf,
 			return -EFAULT;
 	}
 	// mutex unlock
+	//up(&cdata_sem2);
 	up(&cdata_sem);
 	return 0;
 }
@@ -180,8 +184,8 @@ struct miscdevice cdata_misc = {
 	fops:	&cdata_fops,
 };*/
 
-
-int my_init_module(void)
+//__init is section name
+static int __init my_init_module(void)
 {
 	register_chrdev(CDATA_MAJOR, "cdata", &cdata_fops);
 	printk(KERN_ALERT "cdata module: registered.\n");
@@ -189,7 +193,8 @@ int my_init_module(void)
 	return 0;
 }
 
-void my_cleanup_module(void)
+//__init is section name
+static void __exit my_cleanup_module(void)
 {
 	unregister_chrdev(CDATA_MAJOR, "cdata");
 	printk(KERN_ALERT "cdata module: unregisterd.\n");
