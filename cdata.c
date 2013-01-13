@@ -105,13 +105,17 @@ static int cdata_ioctl(struct inode *inode, struct file *filp,
 	printk(KERN_ALERT "cdata: in cdata_ioctl()\n");
 	return 0;
 }
-
+/**
+ * function comment
+ */
 static ssize_t cdata_read(struct file *filp, char *buf, 
 				size_t size, loff_t *off)
 {
 	printk(KERN_ALERT "cdata: in cdata_read()\n");
 }
-
+/**
+ *   API COMMENT
+ */
 static ssize_t cdata_write(struct file *filp, const char *buf, 
 				size_t count, loff_t *off)
 {
